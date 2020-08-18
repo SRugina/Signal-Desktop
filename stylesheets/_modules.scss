@@ -1098,6 +1098,31 @@
       }
     }
   }
+
+  /*
+    As explained at https://developer.mozilla.org/en-US/docs/Web/HTML/Element/s#Accessibility_concerns
+    strikethrough text, in the context of a message, should be read out by screen readers to not
+    adversely affect understanding of a message, as the strikethrough is intentionally used by the
+    sender to convey meaning.
+   */
+  s::before,
+  s::after {
+    clip-path: inset(100%);
+    clip: rect(1px, 1px, 1px, 1px);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+
+  s::before {
+    content: ' [start of stricken text] ';
+  }
+
+  s::after {
+    content: ' [end of stricken text] ';
+  }
 }
 
 .module-message__text--incoming {

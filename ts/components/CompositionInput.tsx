@@ -34,6 +34,8 @@ import {
 } from '../quill/util';
 import { SignalClipboard } from '../quill/signal-clipboard';
 import { DirectionalBlot } from '../quill/block/blot';
+import { Stylify } from './conversation/Stylify';
+import { QuillAttributes } from './conversation/StyleType';
 
 Quill.register('formats/emoji', EmojiBlot);
 Quill.register('formats/mention', MentionBlot);
@@ -516,7 +518,7 @@ export const CompositionInput: React.ComponentType<Props> = props => {
               i18n,
             },
           }}
-          formats={['emoji', 'mention']}
+          formats={['emoji', 'mention', 'bold', 'italic', 'strike']}
           placeholder={i18n('sendMessage')}
           readOnly={disabled}
           ref={element => {
@@ -554,6 +556,76 @@ export const CompositionInput: React.ComponentType<Props> = props => {
                   }
                 }
               );
+
+              let qAttrReversals: QuillAttributes = {};
+              Object.values(Stylify.STYLES).forEach(style => {
+                qAttrReversals = {
+                  ...qAttrReversals,
+                  ...style.qAttrRev,
+                };
+              });
+              quill.on('text-change', () => {
+                quill.formatText(
+                  0,
+                  quill.getText().length,
+                  qAttrReversals,
+                  'silent'
+                );
+
+                const newDelta = new Delta();
+                let length = 0;
+                quill.getContents().ops.forEach(val => {
+                  if (typeof val.insert === 'string') {
+                    const matchData = Stylify.stylifyMatch(val.insert);
+                    if (matchData.length === 0) {
+                      newDelta.retain(val.insert.length);
+                      length += val.insert.length;
+                      return;
+                    }
+                    let last = 0;
+                    matchData.forEach(match => {
+                      let qAttrs: QuillAttributes = {};
+                      // apply styling to text
+                      match.type.reverse().forEach(type => {
+                        const style = Object.values(Stylify.STYLES).find(
+                          s => s.char === type
+                        );
+                        if (style) {
+                          qAttrs = {
+                            ...qAttrs,
+                            ...style.qAttr,
+                          };
+                        }
+                      });
+                      newDelta
+                        .retain(match.index - last)
+                        .retain(match.lastIndex + 1 - match.index, qAttrs);
+                      length += match.lastIndex + 1 - last;
+                      last = match.lastIndex + 1;
+                    });
+                    if (last < val.insert.length) {
+                      newDelta.retain(val.insert.length - last);
+                      length += val.insert.length - last;
+                    }
+                  } else {
+                    // presumably an Embed, e.g. an emoji, which all have length 1
+                    newDelta.retain(1);
+                    length += 1;
+                  }
+                });
+                /*
+                  All Quill documents must end with a newline character. This will be
+                  counted twice if there are no matches. However, that is fine as it means
+                  length already equals quill.getLength(), so adding one does not affect
+                  the if statement below.
+                 */
+                length += 1;
+                if (length < quill.getLength()) {
+                  newDelta.retain(quill.getLength() - length);
+                }
+                quill.updateContents(newDelta, 'silent');
+              });
+
               quillRef.current = quill;
               emojiCompletionRef.current = quill.getModule('emojiCompletion');
               mentionCompletionRef.current = quill.getModule(

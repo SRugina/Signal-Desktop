@@ -8,6 +8,7 @@ import { AtMentionify } from './AtMentionify';
 import { Emojify } from './Emojify';
 import { AddNewLines } from './AddNewLines';
 import { Linkify } from './Linkify';
+import { Stylify } from './Stylify';
 
 import {
   BodyRangesType,
@@ -54,9 +55,9 @@ const renderEmoji = ({
 );
 
 /**
- * This component makes it very easy to use all three of our message formatting
- * components: `Emojify`, `Linkify`, and `AddNewLines`. Because each of them is fully
- * configurable with their `renderXXX` props, this component will assemble all three of
+ * This component makes it very easy to use all four of our message formatting components:
+ * `Emojify`, `Linkify`, `AddNewLines`, and `Stylify`. Because each of them is fully
+ * configurable with their `renderXXX` props, this component will assemble all four of
  * them for you.
  */
 export class MessageBody extends React.Component<Props> {
@@ -81,6 +82,17 @@ export class MessageBody extends React.Component<Props> {
       />
     );
   };
+
+  private readonly renderStyle: RenderTextCallbackType = ({
+    text: textWithStyles,
+    key,
+  }) => (
+    <Stylify
+      key={key}
+      text={textWithStyles}
+      renderNonStyle={this.renderNewLines}
+    />
+  );
 
   public addDownloading(jsx: JSX.Element): JSX.Element {
     const { i18n, textPending } = this.props;
@@ -120,7 +132,7 @@ export class MessageBody extends React.Component<Props> {
           text: textWithPending,
           sizeClass,
           key: 0,
-          renderNonEmoji: this.renderNewLines,
+          renderNonEmoji: this.renderStyle,
         })
       );
     }
@@ -134,7 +146,7 @@ export class MessageBody extends React.Component<Props> {
             text: nonLinkText,
             sizeClass,
             key,
-            renderNonEmoji: this.renderNewLines,
+            renderNonEmoji: this.renderStyle,
           });
         }}
       />
